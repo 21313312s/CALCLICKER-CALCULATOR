@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculator Clicker</title>
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    font-family: monospace;
+    color: #0f0;
+    overflow: hidden;
+    background: #000;
+  }
+  #binaryCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
+  #achievements, #upgrades {
+    width: 20%;
+    padding: 10px;
+    background: rgba(0,0,0,0.85);
+    overflow-y: auto;
+  }
+  #game {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  #calculator {
+    width: 220px;
+    height: 320px;
+    background: #111;
+    border-radius: 12px;
+    display: grid;
+    grid-template-rows: 60px repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    padding: 10px;
+    box-shadow: 0 0 15px #0f0;
+    cursor: pointer;
+  }
+  #calculator-screen {
+    grid-column: span 4;
+    background: #000;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 10px;
+    font-size: 20px;
+    color: #0f0;
+  }
+  .calc-btn {
+    background: #111;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    user-select: none;
+    color: #0f0;
+    border: 1px solid #0f0;
+  }
+  .calc-btn:hover { background: #222; }
+  button {
+    padding: 8px;
+    margin: 4px;
+    border: 1px solid #0f0;
+    border-radius: 5px;
+    background: #111;
+    color: #0f0;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  button:hover { background: #222; }
+  .affordable {
+    box-shadow: 0 0 15px #0f0;
+    background: #222;
+  }
+  .hidden-cheat { display: none; margin-top: 5px; }
+</style>
+</head>
+<body>
+<canvas id="binaryCanvas"></canvas>
+
+<div id="achievements">
+  <h3>Achievements</h3>
+  <div id="achievementList"></div>
+</div>
+
+<div id="game">
+  <h1>Calculator Clicker</h1>
+  <p>Clicks: <span id="clicks">0</span></p>
+  <p>CPS: <span id="cps">0</span></p>
+
+  <div id="calculator" onclick="addClick()">
+    <div id="calculator-screen">0</div>
+    <div class="calc-btn">7</div>
+    <div class="calc-btn">8</div>
+    <div class="calc-btn">9</div>
+    <div class="calc-btn">÷</div>
+    <div class="calc-btn">4</div>
+    <div class="calc-btn">5</div>
+    <div class="calc-btn">6</div>
+    <div class="calc-btn">×</div>
+    <div class="calc-btn">1</div>
+    <div class="calc-btn">2</div>
+    <div class="calc-btn">3</div>
+    <div class="calc-btn">−</div>
+    <div class="calc-btn">0</div>
+    <div class="calc-btn">.</div>
+    <div class="calc-btn" onclick="revealCheat(event)">=</div>
+    <div class="calc-btn">+</div>
+  </div>
+
+  <input id="cheatInput" class="hidden-cheat" type="text" placeholder="Enter cheat code">
+  <button id="cheatBtn" class="hidden-cheat" onclick="useCheat()">Use Cheat</button>
+
+  <div style="margin-top:10px;">
+    <button onclick="saveGame()">Save</button>
+    <button onclick="loadGame()">Load</button>
+    <button onclick="resetGame()">Reset</button>
+  </div>
+</div>
+
+<div id="upgrades">
+  <h3>Upgrades</h3>
+  <div id="upgradeList"></div>
+</div>
+
+<script>
+let clicks = 0;
+let totalCPS = 0;
+let cheatsUsed = new Set();
+
+// === Binary Canvas ===
+const canvas = document.getElementById("binaryCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const binaryChars = "101001010010";
+const fontSize = 16;
+const columns = Math.floor(canvas.width / fontSize);
+const drops = Array(columns).fill(1);
+function drawBinary(){
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = "#0f0";
+  ctx.font = fontSize + "px monospace";
+  for(let i=0;i<drops.length;i++){
+    const text = binaryChars[Math.floor(Math.random()*binaryChars.length)];
+    ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+    if(drops[i]*fontSize>canvas.height && Math.random()>0.975){ drops[i]=0; }
+    drops[i]++;
+  }
+}
+setInterval(drawBinary,50);
+
+// === 70 Upgrades ===
+const upgrades = [];
+const funnyNames = [
+"Abacus Apprentice","Counting Pebbles","Math Homework Solver","Fraction Factory",
+"Decimal Dungeon","Algebra Alley","Geometry Garage","Trigonometry Tower",
+"Pi Factory","Square Root Shack","Logarithm Lair","Exponent Expo",
+"Derivative Den","Integral Inn","Matrix Mansion","Vector Villa",
+"Tensor Temple","Infinity Forge","Golden Ratio Gardens","Fibonacci Farm",
+"Prime Palace","Number Nook","Factorial Fortress","Probability Plaza",
+"Statistics Station","Equation Emporium","Polynomial Palace","Radian Ranch",
+"Imaginary Island","Complex Cave","Euler’s Estate","Zeta Zone",
+"Set Theory Sanctuary","Topology Treehouse","Graph Grid","Algorithm Arcade",
+"Logic Lab","Function Factory","Limit Lagoon","Sum Shack",
+"Proof Palace","Sequence Stadium","Irrational Igloo","Modulo Mansion",
+"Hypotenuse Hut","Permutation Palace","Combination Castle","Derivative Dungeon",
+"Pi-in-the-Sky Plant","Imaginary Inn","Golden Mean Mines","Fractal Fortress",
+"Chaos Chamber","Infinity Inc.","Algebraic Atrium","Calculator Cathedral",
+"Cosine Castle","Sine Shrine","Tangent Tower","Equation Estate",
+"Division Dome","Multiplication Market","Addition Arena","Subtraction Station",
+"Square Root Ranch","Cube Cabin","Log Lodge","Number Nebula",
+"Vector Valley","Prime Pyramid"
+];
+for(let i=0;i<70;i++){
+  let cost;
+  if(i<60){
+    cost=Math.floor(10*Math.pow(1.7,i));
+  } else {
+    cost=Math.floor(Math.pow(10,4 + (i-60)*0.5) * 1e9);
+  }
+  let cps=Math.floor(cost/100000000);
+  upgrades.push({name:funnyNames[i], cost:cost, cps:cps});
+}
+
+// === Achievements ===
+const achievements = [
+  {name:"First Click!", condition:()=>clicks>=1},
+  {name:"Math Apprentice", condition:()=>clicks>=100},
+  {name:"Calculator Wizard", condition:()=>clicks>=1000},
+  {name:"Millionaire Mathematician", condition:()=>clicks>=1e6},
+  {name:"Billion Brainiac", condition:()=>clicks>=1e9},
+  {name:"Quadrillion Quickthinker", condition:()=>clicks>=1e15},
+  {name:"Cheater Supreme", condition:()=>cheatsUsed.size>0, hidden:true},
+  {name:"Binary Overlord", condition:()=>clicks>=101010, hidden:true},
+  {name:"Pi in the Sky", condition:()=>clicks>=3141592, hidden:true},
+  {name:"Golden Ratio Maniac", condition:()=>clicks>=16180339, hidden:true}
+];
+
+// === Functions ===
+function addClick(){ clicks++; updateDisplay(); }
+
+function buyUpgrade(index){
+  const up = upgrades[index];
+  if(clicks>=up.cost){
+    clicks -= up.cost;
+    totalCPS += up.cps;
+    up.cost = Math.floor(up.cost*1.8);
+    updateDisplay();
+  }
+}
+
+function renderUpgrades(){
+  const list = document.getElementById("upgradeList");
+  list.innerHTML = "";
+  upgrades.forEach((u,i)=>{
+    const btn=document.createElement("button");
+    btn.innerText=`${u.name} (+${u.cps} CPS) Cost: ${u.cost.toLocaleString()}`;
+    btn.onclick = ()=>buyUpgrade(i);
+    if(clicks>=u.cost) btn.classList.add("affordable");
+    else btn.classList.remove("affordable");
+    list.appendChild(btn);
+  });
+}
+
+function renderAchievements(){
+  const list=document.getElementById("achievementList");
+  list.innerHTML="";
+  achievements.forEach(a=>{
+    if(a.condition()){
+      const div=document.createElement("div");
+      div.innerText=a.name;
+      div.style.color=a.hidden?"#ff0":"#0f0";
+      list.appendChild(div);
+    }
+  });
+}
+
+function updateDisplay(){
+  document.getElementById("clicks").innerText=clicks.toLocaleString();
+  document.getElementById("cps").innerText=totalCPS.toLocaleString();
+  document.getElementById("calculator-screen").innerText=clicks;
+  renderAchievements();
+  renderUpgrades();
+}
+
+function revealCheat(e){ e.stopPropagation();
+  document.getElementById("cheatInput").style.display="inline-block";
+  document.getElementById("cheatBtn").style.display="inline-block";
+}
+
+function useCheat(){
+  const code=document.getElementById("cheatInput").value.trim();
+  if(cheatsUsed.has(code)){ alert("Cheat already used!"); return; }
+  if(code==="add500"){ clicks+=500; cheatsUsed.add(code); }
+  else if(code==="mathgod"){ clicks+=1000000; totalCPS+=5000; cheatsUsed.add(code); }
+  else if(code==="unlockAll"){ upgrades.forEach(u=> totalCPS+=u.cps); cheatsUsed.add(code); }
+  else { alert("Invalid cheat!"); return; }
+  updateDisplay();
+}
+
+function saveGame(){
+  localStorage.setItem("calcClickerSave", JSON.stringify({clicks,totalCPS,upgrades,cheatsUsed:[...cheatsUsed]}));
+  alert("Game saved!");
+}
+
+function loadGame(){
+  const data=JSON.parse(localStorage.getItem("calcClickerSave"));
+  if(data){
+    clicks=data.clicks;
+    totalCPS=data.totalCPS;
+    data.upgrades.forEach((u,i)=> upgrades[i].cost=u.cost);
+    cheatsUsed=new Set(data.cheatsUsed);
+    updateDisplay();
+  }
+}
+
+function resetGame(){
+  if(confirm("Reset game?")){
+    clicks=0; totalCPS=0; cheatsUsed.clear();
+    upgrades.forEach((u,i)=>{ u.cost=i<60?Math.floor(10*Math.pow(1.7,i)) : Math.floor(Math.pow(10,4 + (i-60)*0.5) * 1e9); });
+    updateDisplay();
+  }
+}
+
+// Passive CPS
+setInterval(()=>{ clicks+=totalCPS; updateDisplay(); },1000);
+
+// Init
+renderUpgrades();
+updateDisplay();
+</script>
+</body>
+</html>
